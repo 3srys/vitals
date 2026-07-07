@@ -17,9 +17,14 @@ The dashboard is a website page (not a Desk page), so it's served directly at `/
 
 ### Live updates (websocket)
 
-`ws_server.py` is a standalone process that polls system + MariaDB metrics every ~0.9s and broadcasts them to every connected browser tab over a websocket (port `8765` by default, override with `WS_MONITOR_PORT`). It's already wired into the `Procfile` as `ws_monitor`, so `bench start` runs it alongside the rest of the bench.
+`ws_server.py` is a standalone process that polls system + MariaDB metrics every ~0.9s and broadcasts them to every connected browser tab over a websocket (port `8765` by default, override with `WS_MONITOR_PORT`).
 
-If `ws_monitor` isn't running or the websocket can't connect, the page falls back to polling `server_status()` over HTTP every 900ms — this works but each open browser tab polls independently, so it costs more DB load with several tabs open. The header shows a **LIVE** (websocket) or **POLLING** (HTTP fallback) indicator so you can tell which mode you're in.
+To start the WebSocket monitor daemon in the bench directory, run:
+```bash
+./env/bin/python apps/frappe_system_monitor/ws_server.py 1>> logs/ws_monitor.log 2>> logs/monitor.error.log &
+```
+
+If the WebSocket server isn't running or the websocket can't connect, the page falls back to polling `server_status()` over HTTP every 900ms — this works but each open browser tab polls independently, so it costs more DB load with several tabs open. The header shows a **LIVE** (websocket) or **POLLING** (HTTP fallback) indicator so you can tell which mode you're in.
 
 ### What's on the dashboard
 

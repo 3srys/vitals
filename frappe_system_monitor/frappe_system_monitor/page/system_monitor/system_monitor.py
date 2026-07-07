@@ -401,6 +401,7 @@ def server_status(**kwargs):
     metrics = collect_metrics()
     metrics["slow_queries"] = _get_slow_queries_data()
     metrics["background_jobs"] = _get_background_jobs_data()
+    metrics["top_processes"] = _get_top_processes_data()
     _push_history(metrics)
     history = _get_history()
     history_out = _build_history_out(history)
@@ -515,6 +516,43 @@ def _get_background_jobs_data():
     except Exception:
         pass
     return jobs
+
+def _get_top_processes_data():
+    out = []
+    try:
+        import psutil
+        for p in psutil.process_iter(['pid', 'name', 'username', 'memory_info', 'io_counters', 'cpu_percent']):
+            try:
+                mem_info = p.info.get('memory_info')
+                rss = mem_info.rss if mem_info else 0
+                cpu = p.info.get('cpu_percent') or 0.0
+                io = p.info.get('io_counters')
+                read_bytes = io.read_bytes if io else 0
+                write_bytes = io.write_bytes if io else 0
+                
+                out.append({
+                    "pid": p.info['pid'],
+                    "name": p.info['name'] or "unknown",
+                    "user": p.info['username'] or "system",
+                    "cpu": round(cpu, 1),
+                    "mem": rss,
+                    "disk_read": read_bytes,
+                    "disk_write": write_bytes
+                })
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                continue
+    except Exception:
+        pass
+    
+    top_cpu = sorted(out, key=lambda x: x['cpu'], reverse=True)[:10]
+    top_mem = sorted(out, key=lambda x: x['mem'], reverse=True)[:10]
+    top_disk = sorted(out, key=lambda x: x['disk_read'] + x['disk_write'], reverse=True)[:10]
+    
+    return {
+        "cpu": top_cpu,
+        "mem": top_mem,
+        "disk": top_disk
+    }
 
 
 @frappe.whitelist(allow_guest=True)

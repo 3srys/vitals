@@ -632,17 +632,9 @@ async def broadcast():
 
 
 async def main():
-    print(f"[ws] System Monitor WebSocket server starting on port {WS_PORT}")
-    async with websockets.serve(
-        handler,
-        "0.0.0.0",
-        WS_PORT,
-        ping_interval=20,
-        ping_timeout=10,
-        max_size=2**20,
-    ):
-        print(f"[ws] Listening on ws://0.0.0.0:{WS_PORT}")
-        await broadcast()
+    print("[ws] System Monitor WebSocket daemon starting...")
+    print("[ws] Publishing telemetry securely via Redis to Frappe Socket.IO")
+    await broadcast()
 
 
 if __name__ == "__main__":

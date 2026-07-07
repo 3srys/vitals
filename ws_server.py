@@ -458,11 +458,12 @@ def _get_process_detail(p):
 def _collect_top_processes():
     out = []
     try:
-        for p in psutil.process_iter(['pid', 'name', 'username', 'memory_info', 'io_counters', 'cpu_percent', 'cmdline']):
+        for p in psutil.process_iter(['pid', 'name', 'username', 'memory_info', 'io_counters', 'cpu_percent', 'cmdline', 'memory_percent']):
             try:
                 mem_info = p.info.get('memory_info')
                 rss = mem_info.rss if mem_info else 0
                 cpu = p.info.get('cpu_percent') or 0.0
+                mem_pct = p.info.get('memory_percent') or 0.0
                 io = p.info.get('io_counters')
                 read_bytes = io.read_bytes if io else 0
                 write_bytes = io.write_bytes if io else 0
@@ -473,6 +474,7 @@ def _collect_top_processes():
                     "user": p.info['username'] or "system",
                     "cpu": round(cpu, 1),
                     "mem": rss,
+                    "mem_pct": round(mem_pct, 1),
                     "disk_read": read_bytes,
                     "disk_write": write_bytes,
                     "detail": _get_process_detail(p),

@@ -597,7 +597,12 @@ def get_background_jobs(**kwargs):
 
 @frappe.whitelist(allow_guest=True)
 def get_sitename():
-    return frappe.local.site
+    import frappe
+    port = frappe.conf.get("websocket_port") or 9000
+    return {
+        "site_name": frappe.local.site,
+        "socketio_port": port
+    }
 
 
 @frappe.whitelist(allow_guest=True)

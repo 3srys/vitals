@@ -517,11 +517,36 @@ def _get_background_jobs_data():
         pass
     return jobs
 
+def _get_process_detail(p):
+    try:
+        import os
+        cmd = p.info.get('cmdline')
+        if not cmd or len(cmd) <= 1:
+            return ""
+        
+        exe_name = os.path.basename(cmd[0])
+        if exe_name in ('python', 'python3', 'node', 'sh', 'bash', 'sudo'):
+            for arg in cmd[1:]:
+                if not arg.startswith('-'):
+                    basename = os.path.basename(arg)
+                    if basename:
+                        return basename
+        else:
+            for arg in cmd[1:]:
+                if not arg.startswith('-'):
+                    basename = os.path.basename(arg)
+                    if basename:
+                        return basename
+    except Exception:
+        pass
+    return ""
+
+
 def _get_top_processes_data():
     out = []
     try:
         import psutil
-        for p in psutil.process_iter(['pid', 'name', 'username', 'memory_info', 'io_counters', 'cpu_percent']):
+        for p in psutil.process_iter(['pid', 'name', 'username', 'memory_info', 'io_counters', 'cpu_percent', 'cmdline']):
             try:
                 mem_info = p.info.get('memory_info')
                 rss = mem_info.rss if mem_info else 0
@@ -537,7 +562,9 @@ def _get_top_processes_data():
                     "cpu": round(cpu, 1),
                     "mem": rss,
                     "disk_read": read_bytes,
-                    "disk_write": write_bytes
+                    "disk_write": write_bytes,
+                    "detail": _get_process_detail(p),
+                    "cmdline": " ".join(p.info['cmdline']) if p.info.get('cmdline') else ""
                 })
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 continue

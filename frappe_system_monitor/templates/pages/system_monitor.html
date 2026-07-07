@@ -137,6 +137,39 @@ var procFilterText='';
 var chartStore={};
 var lastTimestamp=0;
 var lastHistLen=0;
+var collapsedSections={'slow-queries':true,'bg-jobs':true};
+
+window.toggleSection=function(id){
+  collapsedSections[id]=!collapsedSections[id];
+  var el=document.getElementById(id);
+  if(el){
+    var header=el.querySelector('.section-header');
+    var body=el.querySelector('.section-body');
+    if(header&&body){
+      if(collapsedSections[id]){
+        header.classList.remove('open');
+        body.style.maxHeight='0';
+      }else{
+        header.classList.add('open');
+        body.style.maxHeight='2000px';
+      }
+    }
+  }
+};
+
+function getSectionHTML(id,title,bodyHTML,defaultOpen){
+  var isCollapsed=collapsedSections[id]!==undefined?collapsedSections[id]:!defaultOpen;
+  var headerClass=isCollapsed?'section-header':'section-header open';
+  var bodyStyle=isCollapsed?'max-height:0':'max-height:2000px';
+  var s='<div class="section" id="'+id+'">';
+  s+='<div class="'+headerClass+'" onclick="toggleSection(\''+id+'\')">';
+  s+='<div class="section-title"><span class="arrow">▶</span>'+esc(title)+'</div>';
+  s+='<div class="section-line"></div></div>';
+  s+='<div class="section-body" style="'+bodyStyle+'">';
+  s+=bodyHTML;
+  s+='</div></div>';
+  return s;
+}
 
 function esc(s){if(!s)return'';var d=document.createElement('div');d.textContent=s;return d.innerHTML}
 function fmtBytes(b){if(b>=1073741824)return(b/1073741824).toFixed(1)+' GB';if(b>=1048576)return(b/1048576).toFixed(1)+' MB';if(b>=1024)return(b/1024).toFixed(1)+' KB';return b+' B'}
@@ -324,17 +357,14 @@ function metric(label,value,sub,spark,color,maxVal,cid){
   var h='<div class="metric"><div class="metric-label">'+esc(label)+'</div>';
   h+='<div class="metric-val" style="color:'+color+'">'+value+'</div>';
   if(sub)h+='<div class="metric-sub">'+esc(String(sub))+'</div>';
-  if(cid&&spark&&spark.length>1)h+='<button class="metric-btn" onclick="toggleChart(\''+cid+'\')" title="Show chart"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M1 2.5A1.5 1.5 0 012.5 1h3A1.5 1.5 0 017 2.5v3A1.5 1.5 0 015.5 7h-3A1.5 1.5 0 011 5.5v-3zM9 2.5A1.5 1.5 0 0110.5 1h3A1.5 1.5 0 0115 2.5v3A1.5 1.5 0 0113.5 7h-3A1.5 1.5 0 019 5.5v-3zM1 10.5A1.5 1.5 0 012.5 9h3A1.5 1.5 0 017 10.5v3A1.5 1.5 0 015.5 15h-3A1.5 1.5 0 011 13.5v-3zM9 10.5A1.5 1.5 0 0110.5 9h3A1.5 1.5 0 0115 10.5v3A1.5 1.5 0 0113.5 15h-3A1.5 1.5 0 019 13.5v-3z"/></svg></button>';
+  if(cid)h+='<button class="metric-btn" onclick="toggleChart(\''+cid+'\')" title="Show chart"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M1 2.5A1.5 1.5 0 012.5 1h3A1.5 1.5 0 017 2.5v3A1.5 1.5 0 015.5 7h-3A1.5 1.5 0 011 5.5v-3zM9 2.5A1.5 1.5 0 0110.5 1h3A1.5 1.5 0 0115 2.5v3A1.5 1.5 0 0113.5 7h-3A1.5 1.5 0 019 5.5v-3zM1 10.5A1.5 1.5 0 012.5 9h3A1.5 1.5 0 017 10.5v3A1.5 1.5 0 015.5 15h-3A1.5 1.5 0 011 13.5v-3zM9 10.5A1.5 1.5 0 0110.5 9h3A1.5 1.5 0 0115 10.5v3A1.5 1.5 0 0113.5 15h-3A1.5 1.5 0 019 13.5v-3z"/></svg></button>';
   h+='</div>';
   return h;
 }
 
 function renderMariaDB(c,h){
   var repl=c.mdb_replication||{is_replica:false};
-  var s='<div class="section" id="mariadb"><div class="section-header open" onclick="this.classList.toggle(\'open\');var b=this.nextElementSibling;b.style.maxHeight=b.style.maxHeight?\'0\':b.scrollHeight+\'px\'">';
-  s+='<div class="section-title"><span class="arrow">▶</span>MariaDB'+(c.mdb_version?' <span style="font-weight:400;color:var(--text3);font-size:.78rem"> '+esc(c.mdb_version)+'</span>':'')+'</div>';
-  s+='<div class="section-line"></div></div>';
-  s+='<div class="section-body" style="max-height:2000px">';
+  var s='';
 
   s+='<div class="metric-row">';
   s+=metric('Connections',c.mdb_threads_connected||0,c.mdb_max_connections||0+' max',h.mdb_threads_connected,colorFor(c.mdb_connections_pct||0),'','mdb_conn');
@@ -397,9 +427,10 @@ function renderMariaDB(c,h){
   }else{
     s+='<div style="color:var(--text3);padding:12px;font-size:.78rem">'+(filt?'No connections match "'+esc(procFilterText)+'"':'No connections right now')+'</div>';
   }
-  s+='</div></div></div>';
-  return s;
+  s+='</div>';
+  return getSectionHTML('mariadb','MariaDB'+(c.mdb_version?' <span style="font-weight:400;color:var(--text3);font-size:.78rem"> '+esc(c.mdb_version)+'</span>':''),s,true);
 }
+
 
 function barRow(label,val,max,color,valText){
   var pct=max>0?Math.min(100,(val/max)*100):0;
@@ -468,119 +499,93 @@ function render(d){
   s+='</div>';
 
   if(c.cpu_cores&&c.cpu_cores.length>0){
-    s+='<div class="section"><div class="section-header open" onclick="this.classList.toggle(\'open\');var b=this.nextElementSibling;b.style.maxHeight=b.style.maxHeight?\'0\':b.scrollHeight+\'px\'">';
-    s+='<div class="section-title"><span class="arrow">▶</span>CPU Cores</div>';
-    s+='<div class="section-line"></div></div>';
-    s+='<div class="section-body" style="max-height:2000px">';
-    s+='<div class="card"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(60px,1fr));gap:6px">';
+    var coresHTML='<div class="card"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(60px,1fr));gap:6px">';
     c.cpu_cores.forEach(function(v,i){
       var cl=v<50?'#3fb950':v<80?'#d29922':'#f85149';
-      s+='<div style="text-align:center"><div style="font-size:.62rem;color:var(--text3)">C'+(i+1)+'</div><div style="height:4px;border-radius:2px;background:var(--border);overflow:hidden;margin:3px 0"><div style="height:100%;border-radius:2px;transition:width .4s;width:'+v+'%;background:'+cl+'"></div></div><div style="font-size:.62rem;color:'+cl+'">'+Math.round(v)+'%</div></div>';
+      coresHTML+='<div style="text-align:center"><div style="font-size:.62rem;color:var(--text3)">C'+(i+1)+'</div><div style="height:4px;border-radius:2px;background:var(--border);overflow:hidden;margin:3px 0"><div style="height:100%;border-radius:2px;transition:width .4s;width:'+v+'%;background:'+cl+'"></div></div><div style="font-size:.62rem;color:'+cl+'">'+Math.round(v)+'%</div></div>';
     });
-    s+='</div></div></div></div>';
+    coresHTML+='</div></div>';
+    s+=getSectionHTML('cpu-cores','CPU Cores',coresHTML,true);
   }
 
   s+=renderMariaDB(c,h);
 
-  s+='<div class="section" id="erpnext"><div class="section-header open" onclick="this.classList.toggle(\'open\');var b=this.nextElementSibling;b.style.maxHeight=b.style.maxHeight?\'0\':b.scrollHeight+\'px\'">';
-  s+='<div class="section-title"><span class="arrow">▶</span>ERPNext</div>';
-  s+='<div class="section-line"></div></div>';
-  s+='<div class="section-body" style="max-height:2000px">';
-  s+='<div class="metric-row">';
+  var erpnextHTML='<div class="metric-row">';
   var sc=c.erpnext_scheduler==='Running'?'#3fb950':c.erpnext_scheduler==='Dormant'?'#d29922':'#f85149';
-  s+=metric('Scheduler','<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+sc+';margin-right:6px;box-shadow:0 0 6px '+sc+'"></span>'+esc(c.erpnext_scheduler),'',[],sc,'');
-  s+=metric('Workers',c.workers_active+'/'+c.workers_total,'active',[],c.workers_active<c.workers_total*.5?'#d29922':'#3fb950','');
-  s+=metric('Queued Jobs',c.erpnext_queued,'',[],c.erpnext_queued>50?'#d29922':'#3fb950','');
-  s+=metric('Failed Jobs',c.erpnext_failed,'',[],c.erpnext_failed>0?'#f85149':'#3fb950','');
-  s+='</div>';
-  s+='</div></div>';
+  erpnextHTML+=metric('Scheduler','<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+sc+';margin-right:6px;box-shadow:0 0 6px '+sc+'"></span>'+esc(c.erpnext_scheduler),'',[],sc,'');
+  erpnextHTML+=metric('Workers',c.workers_active+'/'+c.workers_total,'active',[],c.workers_active<c.workers_total*.5?'#d29922':'#3fb950','');
+  erpnextHTML+=metric('Queued Jobs',c.erpnext_queued,'',[],c.erpnext_queued>50?'#d29922':'#3fb950','');
+  erpnextHTML+=metric('Failed Jobs',c.erpnext_failed,'',[],c.erpnext_failed>0?'#f85149':'#3fb950','');
+  erpnextHTML+='</div>';
+  s+=getSectionHTML('erpnext','ERPNext',erpnextHTML,true);
 
-  s+='<div class="section" id="redis"><div class="section-header open" onclick="this.classList.toggle(\'open\');var b=this.nextElementSibling;b.style.maxHeight=b.style.maxHeight?\'0\':b.scrollHeight+\'px\'">';
-  s+='<div class="section-title"><span class="arrow">▶</span>Redis</div>';
-  s+='<div class="section-line"></div></div>';
-  s+='<div class="section-body" style="max-height:2000px">';
-  s+='<div class="metric-row">';
-  s+=metric('Memory',esc(c.redis_memory),'used','',c.redis_memory!=='N/A'?'#58a6ff':'#6e7681','');
-  s+=metric('Connections',c.redis_connections,'active','',c.redis_connections>100?'#d29922':'#3fb950','');
-  s+=metric('Total Keys',c.redis_keys.toLocaleString(),'','',c.redis_keys>1e6?'#d29922':'#58a6ff','');
-  s+='</div>';
-  s+='</div></div>';
+  var redisHTML='<div class="metric-row">';
+  redisHTML+=metric('Memory',esc(c.redis_memory),'used','',c.redis_memory!=='N/A'?'#58a6ff':'#6e7681','');
+  redisHTML+=metric('Connections',c.redis_connections,'active','',c.redis_connections>100?'#d29922':'#3fb950','');
+  redisHTML+=metric('Total Keys',c.redis_keys.toLocaleString(),'','',c.redis_keys>1e6?'#d29922':'#58a6ff','');
+  redisHTML+='</div>';
+  s+=getSectionHTML('redis','Redis',redisHTML,true);
 
-  s+='<div class="section" id="services"><div class="section-header open" onclick="this.classList.toggle(\'open\');var b=this.nextElementSibling;b.style.maxHeight=b.style.maxHeight?\'0\':b.scrollHeight+\'px\'">';
-  s+='<div class="section-title"><span class="arrow">▶</span>Services</div>';
-  s+='<div class="section-line"></div></div>';
-  s+='<div class="section-body" style="max-height:2000px">';
-  s+='<div class="card"><div class="svc-grid">';
+  var servicesHTML='<div class="card"><div class="svc-grid">';
   Object.keys(c.services).forEach(function(n){
     var st=c.services[n];
     var dc=st==='Running'?'on':st==='Stopped'?'off':'unk';
-    s+='<div class="svc-item"><span class="svc-dot '+dc+'"></span><span class="svc-name">'+esc(n)+'</span><span class="svc-status">'+esc(st)+'</span></div>';
+    servicesHTML+='<div class="svc-item"><span class="svc-dot '+dc+'"></span><span class="svc-name">'+esc(n)+'</span><span class="svc-status">'+esc(st)+'</span></div>';
   });
-  s+='</div></div></div></div>';
+  servicesHTML+='</div></div>';
+  s+=getSectionHTML('services','Services',servicesHTML,true);
 
-  s+='<div class="section" id="users"><div class="section-header open" onclick="this.classList.toggle(\'open\');var b=this.nextElementSibling;b.style.maxHeight=b.style.maxHeight?\'0\':b.scrollHeight+\'px\'">';
-  s+='<div class="section-title"><span class="arrow">▶</span>Active Users ('+c.active_sessions+' sessions)</div>';
-  s+='<div class="section-line"></div></div>';
-  s+='<div class="section-body" style="max-height:2000px">';
-  s+='<div class="card">';
+  var usersHTML='<div class="card">';
   if(c.recent_users&&c.recent_users.length){
     c.recent_users.forEach(function(u){
       var ini=(u.full_name||u.name).substring(0,2).toUpperCase();
-      s+='<div class="user-item"><div class="user-av">'+esc(ini)+'</div><div><div class="user-name">'+esc(u.full_name)+'</div><div class="user-time">'+esc(u.last_active)+'</div></div></div>';
+      usersHTML+='<div class="user-item"><div class="user-av">'+esc(ini)+'</div><div><div class="user-name">'+esc(u.full_name)+'</div><div class="user-time">'+esc(u.last_active)+'</div></div></div>';
     });
-  }else s+='<div style="color:var(--text3);padding:8px">No active users</div>';
-  s+='</div></div></div>';
+  }else usersHTML+='<div style="color:var(--text3);padding:8px">No active users</div>';
+  usersHTML+='</div>';
+  s+=getSectionHTML('users','Active Users ('+c.active_sessions+' sessions)',usersHTML,true);
 
-  s+='<div class="section" id="errors"><div class="section-header open" onclick="this.classList.toggle(\'open\');var b=this.nextElementSibling;b.style.maxHeight=b.style.maxHeight?\'0\':b.scrollHeight+\'px\'">';
-  s+='<div class="section-title"><span class="arrow">▶</span>Recent Errors (24h: '+c.errors_24h+')</div>';
-  s+='<div class="section-line"></div></div>';
-  s+='<div class="section-body" style="max-height:2000px">';
-  s+='<div class="card">';
+  var errorsHTML='<div class="card">';
   if(c.recent_errors&&c.recent_errors.length){
     c.recent_errors.forEach(function(e){
-      s+='<div class="err-item"><div class="err-method">'+esc(e.method)+'</div><div class="err-text">'+esc(e.error)+'</div><div class="err-time">'+esc(e.time)+'</div></div>';
+      errorsHTML+='<div class="err-item"><div class="err-method">'+esc(e.method)+'</div><div class="err-text">'+esc(e.error)+'</div><div class="err-time">'+esc(e.time)+'</div></div>';
     });
-  }else s+='<div style="color:var(--green);padding:8px">No errors in the last 24 hours</div>';
-  s+='</div></div></div>';
+  }else errorsHTML+='<div style="color:var(--green);padding:8px">No errors in the last 24 hours</div>';
+  errorsHTML+='</div>';
+  s+=getSectionHTML('errors','Recent Errors (24h: '+c.errors_24h+')',errorsHTML,true);
 
-  s+='<div class="section" id="slow-queries"><div class="section-header" onclick="this.classList.toggle(\'open\');var b=this.nextElementSibling;b.style.maxHeight=b.style.maxHeight?\'0\':b.scrollHeight+\'px\'">';
-  s+='<div class="section-title"><span class="arrow">▶</span>Running Queries ('+c.slow_queries.length+')</div>';
-  s+='<div class="section-line"></div></div>';
-  s+='<div class="section-body" style="max-height:2000px">';
-  s+='<div class="card">';
+  var slowQueriesHTML='<div class="card">';
   if(c.slow_queries.length){
     c.slow_queries.forEach(function(q){
       var tc=q.time>30?'var(--red)':q.time>5?'var(--yellow)':'var(--green)';
-      s+='<div class="slow-item"><div class="slow-header">';
-      s+='<div class="slow-time" style="color:'+tc+'">'+q.time+'s</div>';
-      s+='<div class="slow-user">'+esc(q.user)+'</div>';
-      if(q.db)s+='<div class="slow-db">'+esc(q.db)+'</div>';
-      s+='<div class="job-status">'+esc(q.command)+'</div>';
-      s+='</div>';
-      if(q.query)s+='<div class="slow-query">'+esc(q.query)+'</div>';
-      s+='</div>';
+      slowQueriesHTML+='<div class="slow-item"><div class="slow-header">';
+      slowQueriesHTML+='<div class="slow-time" style="color:'+tc+'">'+q.time+'s</div>';
+      slowQueriesHTML+='<div class="slow-user">'+esc(q.user)+'</div>';
+      if(q.db)slowQueriesHTML+='<div class="slow-db">'+esc(q.db)+'</div>';
+      slowQueriesHTML+='<div class="job-status">'+esc(q.command)+'</div>';
+      slowQueriesHTML+='</div>';
+      if(q.query)slowQueriesHTML+='<div class="slow-query">'+esc(q.query)+'</div>';
+      slowQueriesHTML+='</div>';
     });
-  }else s+='<div style="color:var(--green);padding:8px">No active queries</div>';
-  s+='</div></div></div>';
+  }else slowQueriesHTML+='<div style="color:var(--green);padding:8px">No active queries</div>';
+  slowQueriesHTML+='</div>';
+  s+=getSectionHTML('slow-queries','Running Queries ('+c.slow_queries.length+')',slowQueriesHTML,false);
 
-  s+='<div class="section" id="bg-jobs"><div class="section-header" onclick="this.classList.toggle(\'open\');var b=this.nextElementSibling;b.style.maxHeight=b.style.maxHeight?\'0\':b.scrollHeight+\'px\'">';
-  s+='<div class="section-title"><span class="arrow">▶</span>Background Jobs ('+c.background_jobs.length+')</div>';
-  s+='<div class="section-line"></div></div>';
-  s+='<div class="section-body" style="max-height:2000px">';
-  s+='<div class="card">';
+  var bgJobsHTML='<div class="card">';
   if(c.background_jobs.length){
     c.background_jobs.forEach(function(j){
-      s+='<div class="job-item"><div style="flex:1;min-width:0">';
-      s+='<div class="job-method">'+esc(j.method)+'</div>';
-      s+='<div class="job-meta"><span class="job-queue">'+esc(j.queue)+'</span>';
-      if(j.started_at)s+=' · started '+esc(j.started_at);
-      if(j.enqueued_at)s+=' · enqueued '+esc(j.enqueued_at);
-      s+='</div>';
-      if(j.exc_info)s+='<div class="job-exc">'+esc(j.exc_info)+'</div>';
-      s+='</div><div class="job-status '+j.status+'">'+esc(j.status)+'</div></div>';
+      bgJobsHTML+='<div class="job-item"><div style="flex:1;min-width:0">';
+      bgJobsHTML+='<div class="job-method">'+esc(j.method)+'</div>';
+      bgJobsHTML+='<div class="job-meta"><span class="job-queue">'+esc(j.queue)+'</span>';
+      if(j.started_at)bgJobsHTML+=' · started '+esc(j.started_at);
+      if(j.enqueued_at)bgJobsHTML+=' · enqueued '+esc(j.enqueued_at);
+      bgJobsHTML+='</div>';
+      if(j.exc_info)bgJobsHTML+='<div class="job-exc">'+esc(j.exc_info)+'</div>';
+      bgJobsHTML+='</div><div class="job-status '+j.status+'">'+esc(j.status)+'</div></div>';
     });
-  }else s+='<div style="color:var(--green);padding:8px">No active jobs</div>';
-  s+='</div></div></div>';
+  }else bgJobsHTML+='<div style="color:var(--green);padding:8px">No active jobs</div>';
+  bgJobsHTML+='</div>';
+  s+=getSectionHTML('bg-jobs','Background Jobs ('+c.background_jobs.length+')',bgJobsHTML,false);
 
   ROOT.innerHTML=s;
   ROOT.querySelectorAll('.chart-area[data-cid]').forEach(function(area){

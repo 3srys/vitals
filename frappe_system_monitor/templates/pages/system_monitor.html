@@ -163,7 +163,7 @@ function getSectionHTML(id,title,bodyHTML,defaultOpen){
   var bodyStyle=isCollapsed?'max-height:0':'max-height:2000px';
   var s='<div class="section" id="'+id+'">';
   s+='<div class="'+headerClass+'" onclick="toggleSection(\''+id+'\')">';
-  s+='<div class="section-title"><span class="arrow">▶</span>'+esc(title)+'</div>';
+  s+='<div class="section-title"><span class="arrow">▶</span>'+title+'</div>';
   s+='<div class="section-line"></div></div>';
   s+='<div class="section-body" style="'+bodyStyle+'">';
   s+=bodyHTML;
@@ -465,6 +465,24 @@ function render(d){
   var hc=hs>=80?'#3fb950':hs>=50?'#d29922':'#f85149';
   var hcText=hs>=80?'Healthy':hs>=50?'Warning':'Critical';
 
+  // Accumulate client-side history to handle server cache/Redis failures
+  if(!window.clientHistory)window.clientHistory={};
+  var ch=window.clientHistory;
+  Object.keys(c).forEach(function(k){
+    var v=c[k];
+    if(typeof v==='number'){
+      if(!ch[k])ch[k]=[];
+      if(h&&h[k]&&Array.isArray(h[k])&&h[k].length>ch[k].length){
+        ch[k]=h[k].slice();
+      }
+      if(c.timestamp&&c.timestamp!==lastTimestamp){
+        ch[k].push(v);
+        if(ch[k].length>120)ch[k].shift();
+      }
+    }
+  });
+  h=ch;
+
   chartStore={};
   lastTimestamp=c.timestamp||0;
   lastHistory=h;
@@ -598,24 +616,39 @@ function render(d){
 var connected=false,dataReceived=false,fallbackTimer=null;
 var sioSocket=null;
 
-function getSocketIOUrl(){
+function getSocketIOUrl(port){
   var loc=window.location;
-  var port=9000;
   var proto=loc.protocol==='https:'?'https:':'http:';
-  return proto+'//'+loc.hostname+':'+port;
+  return proto+'//'+loc.hostname+':'+(port||9000);
 }
 
-var cachedSitename=null;
+var cachedSiteInfo=null;
 
-function fetchSitename(cb){
-  if(cachedSitename!==null){cb(cachedSitename);return}
+function fetchSiteInfo(cb){
+  if(cachedSiteInfo!==null){cb(cachedSiteInfo);return}
   fetch("/api/method/frappe_system_monitor.frappe_system_monitor.page.system_monitor.system_monitor.get_sitename")
     .then(function(r){return r.json()})
     .then(function(r){
-      cachedSitename=(r&&r.message)||window.location.hostname;
-      cb(cachedSitename);
+      if(r&&r.message){
+        cachedSiteInfo={
+          site_name: r.message.site_name,
+          socketio_port: r.message.socketio_port||9000
+        };
+      }else{
+        cachedSiteInfo={
+          site_name: window.location.hostname,
+          socketio_port: 9000
+        };
+      }
+      cb(cachedSiteInfo);
     })
-    .catch(function(){cachedSitename=window.location.hostname;cb(cachedSitename)});
+    .catch(function(){
+      cachedSiteInfo={
+        site_name: window.location.hostname,
+        socketio_port: 9000
+      };
+      cb(cachedSiteInfo);
+    });
 }
 
 function onDataReceived(){
@@ -647,9 +680,9 @@ function getCookie(name){
 
 function trySocketIO(){
   if(typeof io==='undefined'){startHTTP();return}
-  fetchSitename(function(sitename){
+  fetchSiteInfo(function(info){
     try{
-      var url=getSocketIOUrl()+'/'+sitename;
+      var url=getSocketIOUrl(info.socketio_port)+'/'+info.site_name;
       var sid=getCookie('sid');
       sioSocket=io(url,{
         transports:['polling','websocket'],

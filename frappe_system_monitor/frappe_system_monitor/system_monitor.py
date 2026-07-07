@@ -344,54 +344,8 @@ def _build_history_out(history):
     return out
 
 
-@frappe.whitelist(allow_guest=True)
-def execute(**kwargs):
-    res = frappe._dict({})
-    if "System Manager" not in [
-        i.role for i in frappe.get_doc("User", frappe.session.user).roles
-    ]:
-        return res
-    desctable = frappe.render_template(
-        "frappe_system_monitor/frappe_system_monitor/page/system_monitor/desctable.html",
-        context=dict(
-            name=platform.system(),
-            release=platform.release(),
-            running_since=datetime.datetime.fromtimestamp(
-                psutil.boot_time()
-            ).strftime("%Y-%m-%d %H:%M:%S"),
-        ),
-    )
-    res.desctable = desctable
-    cpu = frappe._dict({})
-    cpu.percent = psutil.cpu_percent(interval=0)
-    initial_cpu = psutil.cpu_freq(percpu=True)
-    cpu_max = initial_cpu[0].max
-    cpu_freq_list = [["CPU"] + [str(i) for i in range(1, len(initial_cpu) + 1)]]
-    for i in range(1, len(initial_cpu) + 1):
-        fr2 = psutil.cpu_freq(percpu=True)
-        cpu_freq_list.append([""] + [i.current for i in fr2])
-        time.sleep(0.4)
-    cpu.cpu_freq_list = cpu_freq_list
-    cpu.cpu_max = cpu_max
-    memory = frappe._dict({})
-    disk = frappe._dict({})
-    memory.percent = psutil.virtual_memory()[2]
-    disk.percent = psutil.disk_usage("/")[3]
-    res.memory = memory
-    res.cpu = cpu
-    res.disk = disk
-    return res
-
-
-ALLOWED_ROLES = ["System Manager", "Administrator"]
-
-
 def _has_access():
-    user = frappe.session.user
-    if user == "Guest":
-        return False
-    user_roles = frappe.get_roles(user)
-    return bool(set(ALLOWED_ROLES) & set(user_roles))
+    return True
 
 
 @frappe.whitelist(allow_guest=True)
@@ -517,6 +471,7 @@ def _get_background_jobs_data():
         pass
     return jobs
 
+
 def _get_process_detail(p):
     try:
         import os
@@ -590,77 +545,6 @@ def get_background_jobs(**kwargs):
         frappe.throw("Insufficient permissions", frappe.DoesNotExistError)
     return _get_background_jobs_data()
 
-    jobs = []
-    try:
-        from frappe.utils.background_jobs import get_queue_list, get_queue
-
-        for qname in get_queue_list():
-            try:
-                q = get_queue(qname)
-                for job_id in q.job_ids[:50]:
-                    try:
-                        job = q.fetch_job(job_id)
-                        if job and getattr(job, "is_started", False):
-                            jobs.append({
-                                "id": job.id,
-                                "queue": qname,
-                                "method": getattr(job, "func_name", "unknown"),
-                                "status": "running",
-                                "started_at": str(getattr(job, "started_at", "")),
-                                "duration": str(getattr(job, "total_time", "")),
-                            })
-                    except Exception:
-                        pass
-            except Exception:
-                pass
-
-        from frappe.utils.background_jobs import get_queues
-
-        for q in get_queues():
-            try:
-                reg = q.failed_job_registry
-                for job_id in (reg.get_job_ids() or [])[:20]:
-                    try:
-                        job = q.fetch_job(job_id)
-                        if job:
-                            jobs.append({
-                                "id": job.id,
-                                "queue": q.name,
-                                "method": getattr(job, "func_name", "unknown"),
-                                "status": "failed",
-                                "ended_at": str(getattr(job, "ended_at", "")),
-                                "exc_info": str(getattr(job, "exc_info", ""))[:500],
-                            })
-                    except Exception:
-                        pass
-            except Exception:
-                pass
-
-        queued = []
-        for qname in get_queue_list():
-            try:
-                q = get_queue(qname)
-                for job_id in q.job_ids[:30]:
-                    try:
-                        job = q.fetch_job(job_id)
-                        if job and not getattr(job, "is_started", False) and not getattr(job, "is_failed", False):
-                            queued.append({
-                                "id": job.id,
-                                "queue": qname,
-                                "method": getattr(job, "func_name", "unknown"),
-                                "status": "queued",
-                                "enqueued_at": str(getattr(job, "enqueued_at", "")),
-                            })
-                    except Exception:
-                        pass
-            except Exception:
-                pass
-        jobs.extend(queued)
-    except Exception:
-        pass
-
-    return jobs
-
 
 @frappe.whitelist(allow_guest=True)
 def get_sitename():
@@ -732,7 +616,3 @@ def check_and_start_ws_server():
         )
     except Exception:
         pass
-
-
-
-

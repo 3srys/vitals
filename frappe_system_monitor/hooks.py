@@ -106,7 +106,7 @@ before_install = "frappe_system_monitor.install.before_install"
 scheduler_events = {
 	"cron": {
 		"* * * * *": [
-			"frappe_system_monitor.frappe_system_monitor.page.system_monitor.system_monitor.check_and_start_ws_server"
+			"frappe_system_monitor.frappe_system_monitor.system_monitor.check_and_start_ws_server"
 		]
 	}
 }

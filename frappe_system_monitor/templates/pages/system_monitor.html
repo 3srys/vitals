@@ -1328,7 +1328,7 @@
 
       function fetchSiteInfo(cb) {
         if (cachedSiteInfo !== null) { cb(cachedSiteInfo); return }
-        fetch("/api/method/frappe_system_monitor.frappe_system_monitor.page.system_monitor.system_monitor.get_sitename")
+        fetch("/api/method/frappe_system_monitor.frappe_system_monitor.system_monitor.get_sitename")
           .then(function (r) { return r.json() })
           .then(function (r) {
             if (r && r.message) {
@@ -1369,7 +1369,7 @@
       }
 
       function fetchHTTP() {
-        fetch("/api/method/frappe_system_monitor.frappe_system_monitor.page.system_monitor.system_monitor.server_status")
+        fetch("/api/method/frappe_system_monitor.frappe_system_monitor.system_monitor.server_status")
           .then(function (r) { return r.json() })
           .then(function (r) { if (r && r.message) { onDataReceived(); render(r.message) } })
           .catch(function () { });

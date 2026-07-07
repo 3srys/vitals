@@ -36,5 +36,5 @@ If `ws_monitor` isn't running or the websocket can't connect, the page falls bac
 - `ws_server.py` connects to MariaDB directly (via `pymysql`) using credentials from `site_config.json`, independent of the Frappe request stack — this keeps the live push cheap and working even under web-worker load.
 - `SHOW FULL PROCESSLIST` is the one metrics query whose cost scales with connection count; on servers with very high connection counts, expect it to be somewhat more expensive than the other status/variable queries (which are all in-memory and effectively free).
 
-![image](https://user-images.githubusercontent.com/10146518/164576659-861f767e-5891-4d0b-8cf6-4ddf981ef310.png)
+![image](images/dashboard.png)
 

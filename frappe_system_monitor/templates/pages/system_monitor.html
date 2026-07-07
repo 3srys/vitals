@@ -544,9 +544,11 @@ function render(d){
     tpHTML+='<div class="proc-col"><h4>Top CPU Processes</h4><div class="card">';
     if(tp.cpu&&tp.cpu.length>0){
       tp.cpu.forEach(function(p){
-        tpHTML+='<div class="proc-item">' +
+        var detailText = p.detail ? ' <span style="color:var(--text3);font-size:.7rem;font-weight:normal;margin-left:4px">(' + esc(p.detail) + ')</span>' : '';
+        var tooltip = p.cmdline ? esc(p.cmdline) : esc(p.name);
+        tpHTML+='<div class="proc-item" title="'+tooltip+'">' +
           '<div class="proc-info">' +
-            '<div class="proc-name" title="'+esc(p.name)+'">'+esc(p.name)+'</div>' +
+            '<div class="proc-name">'+esc(p.name)+detailText+'</div>' +
             '<div class="proc-meta">PID: '+p.pid+' · '+esc(p.user)+'</div>' +
           '</div>' +
           '<div class="proc-val">'+p.cpu+'%</div>' +
@@ -561,9 +563,11 @@ function render(d){
     tpHTML+='<div class="proc-col"><h4>Top Memory Processes</h4><div class="card">';
     if(tp.mem&&tp.mem.length>0){
       tp.mem.forEach(function(p){
-        tpHTML+='<div class="proc-item">' +
+        var detailText = p.detail ? ' <span style="color:var(--text3);font-size:.7rem;font-weight:normal;margin-left:4px">(' + esc(p.detail) + ')</span>' : '';
+        var tooltip = p.cmdline ? esc(p.cmdline) : esc(p.name);
+        tpHTML+='<div class="proc-item" title="'+tooltip+'">' +
           '<div class="proc-info">' +
-            '<div class="proc-name" title="'+esc(p.name)+'">'+esc(p.name)+'</div>' +
+            '<div class="proc-name">'+esc(p.name)+detailText+'</div>' +
             '<div class="proc-meta">PID: '+p.pid+' · '+esc(p.user)+'</div>' +
           '</div>' +
           '<div class="proc-val">'+fmtBytes(p.mem)+'</div>' +
@@ -578,9 +582,11 @@ function render(d){
     tpHTML+='<div class="proc-col"><h4>Top Disk I/O (Total)</h4><div class="card">';
     if(tp.disk&&tp.disk.length>0){
       tp.disk.forEach(function(p){
-        tpHTML+='<div class="proc-item">' +
+        var detailText = p.detail ? ' <span style="color:var(--text3);font-size:.7rem;font-weight:normal;margin-left:4px">(' + esc(p.detail) + ')</span>' : '';
+        var tooltip = p.cmdline ? esc(p.cmdline) : esc(p.name);
+        tpHTML+='<div class="proc-item" title="'+tooltip+'">' +
           '<div class="proc-info">' +
-            '<div class="proc-name" title="'+esc(p.name)+'">'+esc(p.name)+'</div>' +
+            '<div class="proc-name">'+esc(p.name)+detailText+'</div>' +
             '<div class="proc-meta">PID: '+p.pid+' · '+esc(p.user)+'</div>' +
           '</div>' +
           '<div class="proc-val" style="font-size: .75rem; text-align: right;">' +

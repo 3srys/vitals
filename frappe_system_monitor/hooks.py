@@ -2,11 +2,9 @@ from . import __version__ as app_version
 
 app_name = "frappe_system_monitor"
 app_title = "Frappe System Monitor"
-app_publisher = "Anthony Emmanuel"
+app_publisher = "3srys"
 app_description = "System monitor for frappe and ERPNExt"
-app_icon = "octicon octicon-file-directory"
-app_color = "grey"
-app_email = "hackacehuawei@gmail.com"
+app_email = "sojitrashreyas4280@gmail.com"
 app_license = "MIT"
 
 # Includes in <head>
@@ -16,7 +14,6 @@ app_license = "MIT"
 # app_include_css = "/assets/frappe_system_monitor/css/frappe_system_monitor.css"
 # app_include_js = "/assets/frappe_system_monitor/js/frappe_system_monitor.js"
 
-# include js, css files in header of web template
 # web_include_css = "/assets/frappe_system_monitor/css/frappe_system_monitor.css"
 # web_include_js = "/assets/frappe_system_monitor/js/frappe_system_monitor.js"
 
@@ -56,7 +53,7 @@ app_license = "MIT"
 # Installation
 # ------------
 
-# before_install = "frappe_system_monitor.install.before_install"
+before_install = "frappe_system_monitor.install.before_install"
 # after_install = "frappe_system_monitor.install.after_install"
 
 # Uninstallation
@@ -106,23 +103,13 @@ app_license = "MIT"
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
-# 	"all": [
-# 		"frappe_system_monitor.tasks.all"
-# 	],
-# 	"daily": [
-# 		"frappe_system_monitor.tasks.daily"
-# 	],
-# 	"hourly": [
-# 		"frappe_system_monitor.tasks.hourly"
-# 	],
-# 	"weekly": [
-# 		"frappe_system_monitor.tasks.weekly"
-# 	]
-# 	"monthly": [
-# 		"frappe_system_monitor.tasks.monthly"
-# 	]
-# }
+scheduler_events = {
+	"cron": {
+		"* * * * *": [
+			"frappe_system_monitor.frappe_system_monitor.page.system_monitor.system_monitor.check_and_start_ws_server"
+		]
+	}
+}
 
 # Testing
 # -------

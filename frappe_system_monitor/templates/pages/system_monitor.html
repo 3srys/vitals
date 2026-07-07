@@ -121,6 +121,16 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Inter','
 .slow-user{color:var(--text2);font-size:.76rem}
 .slow-db{color:var(--blue);font-size:.72rem}
 .slow-query{margin-top:6px;font-family:'Fira Code',monospace;font-size:.72rem;color:var(--text2);word-break:break-all;white-space:pre-wrap;max-height:120px;overflow-y:auto;line-height:1.4}
+
+.proc-row-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media(max-width:960px){.proc-row-grid{grid-template-columns:1fr}}
+.proc-col h4{font-size:.74rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);font-weight:600;margin-bottom:8px}
+.proc-item{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-bottom:1px solid rgba(30,42,58,.4);font-size:.76rem}
+.proc-item:last-child{border-bottom:none}
+.proc-info{flex:1;min-width:0;margin-right:10px}
+.proc-name{color:var(--text);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.proc-meta{font-size:.66rem;color:var(--text3);margin-top:1px}
+.proc-val{font-size:.82rem;font-weight:700;color:var(--blue);flex-shrink:0}
 </style>
 </head>
 <body>
@@ -524,6 +534,68 @@ function render(d){
     });
     coresHTML+='</div></div>';
     s+=getSectionHTML('cpu-cores','CPU Cores',coresHTML,true);
+  }
+
+  if(c.top_processes){
+    var tp=c.top_processes;
+    var tpHTML='<div class="proc-row-grid">';
+    
+    // CPU Top Processes
+    tpHTML+='<div class="proc-col"><h4>Top CPU Processes</h4><div class="card">';
+    if(tp.cpu&&tp.cpu.length>0){
+      tp.cpu.forEach(function(p){
+        tpHTML+='<div class="proc-item">' +
+          '<div class="proc-info">' +
+            '<div class="proc-name" title="'+esc(p.name)+'">'+esc(p.name)+'</div>' +
+            '<div class="proc-meta">PID: '+p.pid+' · '+esc(p.user)+'</div>' +
+          '</div>' +
+          '<div class="proc-val">'+p.cpu+'%</div>' +
+        '</div>';
+      });
+    }else{
+      tpHTML+='<div style="color:var(--text3);padding:8px">No data</div>';
+    }
+    tpHTML+='</div></div>';
+    
+    // Memory Top Processes
+    tpHTML+='<div class="proc-col"><h4>Top Memory Processes</h4><div class="card">';
+    if(tp.mem&&tp.mem.length>0){
+      tp.mem.forEach(function(p){
+        tpHTML+='<div class="proc-item">' +
+          '<div class="proc-info">' +
+            '<div class="proc-name" title="'+esc(p.name)+'">'+esc(p.name)+'</div>' +
+            '<div class="proc-meta">PID: '+p.pid+' · '+esc(p.user)+'</div>' +
+          '</div>' +
+          '<div class="proc-val">'+fmtBytes(p.mem)+'</div>' +
+        '</div>';
+      });
+    }else{
+      tpHTML+='<div style="color:var(--text3);padding:8px">No data</div>';
+    }
+    tpHTML+='</div></div>';
+    
+    // Disk Top Processes
+    tpHTML+='<div class="proc-col"><h4>Top Disk I/O (Total)</h4><div class="card">';
+    if(tp.disk&&tp.disk.length>0){
+      tp.disk.forEach(function(p){
+        tpHTML+='<div class="proc-item">' +
+          '<div class="proc-info">' +
+            '<div class="proc-name" title="'+esc(p.name)+'">'+esc(p.name)+'</div>' +
+            '<div class="proc-meta">PID: '+p.pid+' · '+esc(p.user)+'</div>' +
+          '</div>' +
+          '<div class="proc-val" style="font-size: .75rem; text-align: right;">' +
+            '<div>R: '+fmtBytes(p.disk_read)+'</div>' +
+            '<div style="color: var(--text3); font-size: .65rem;">W: '+fmtBytes(p.disk_write)+'</div>' +
+          '</div>' +
+        '</div>';
+      });
+    }else{
+      tpHTML+='<div style="color:var(--text3);padding:8px">No data</div>';
+    }
+    tpHTML+='</div></div>';
+    
+    tpHTML+='</div>';
+    s+=getSectionHTML('top-processes','Top Processes',tpHTML,false);
   }
 
   s+=renderMariaDB(c,h);

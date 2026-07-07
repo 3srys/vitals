@@ -431,8 +431,45 @@ def _collect_background_jobs():
         pass
     return out
 
+def _collect_top_processes():
+    out = []
+    try:
+        for p in psutil.process_iter(['pid', 'name', 'username', 'memory_info', 'io_counters', 'cpu_percent']):
+            try:
+                mem_info = p.info.get('memory_info')
+                rss = mem_info.rss if mem_info else 0
+                cpu = p.info.get('cpu_percent') or 0.0
+                io = p.info.get('io_counters')
+                read_bytes = io.read_bytes if io else 0
+                write_bytes = io.write_bytes if io else 0
+                
+                out.append({
+                    "pid": p.info['pid'],
+                    "name": p.info['name'] or "unknown",
+                    "user": p.info['username'] or "system",
+                    "cpu": round(cpu, 1),
+                    "mem": rss,
+                    "disk_read": read_bytes,
+                    "disk_write": write_bytes
+                })
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                continue
+    except Exception:
+        pass
+    
+    top_cpu = sorted(out, key=lambda x: x['cpu'], reverse=True)[:10]
+    top_mem = sorted(out, key=lambda x: x['mem'], reverse=True)[:10]
+    top_disk = sorted(out, key=lambda x: x['disk_read'] + x['disk_write'], reverse=True)[:10]
+    
+    return {
+        "cpu": top_cpu,
+        "mem": top_mem,
+        "disk": top_disk
+    }
+
 
 def collect_metrics():
+
     data = {}
 
     cpu_pcts = psutil.cpu_percent(interval=0, percpu=True)
@@ -500,6 +537,7 @@ def collect_metrics():
     data.update(_collect_errors())
     data["slow_queries"] = _collect_slow_queries()
     data["background_jobs"] = _collect_background_jobs()
+    data["top_processes"] = _collect_top_processes()
 
     data["timestamp"] = time.time()
     return data

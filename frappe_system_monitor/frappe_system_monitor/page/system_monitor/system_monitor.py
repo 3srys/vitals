@@ -344,7 +344,7 @@ def _build_history_out(history):
     return out
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def execute(**kwargs):
     res = frappe._dict({})
     if "System Manager" not in [
@@ -517,11 +517,45 @@ def _get_background_jobs_data():
         pass
     return jobs
 
+def _get_process_name(p):
+    try:
+        import os
+        cmd = p.info.get('cmdline')
+        if not cmd:
+            return p.info.get('name') or "unknown"
+        
+        exe = cmd[0]
+        exe_name = os.path.basename(exe)
+        
+        if exe_name in ('python', 'python3', 'node', 'sh', 'bash', 'sudo') and len(cmd) > 1:
+            args = []
+            for arg in cmd[1:]:
+                if '/' in arg:
+                    parts = arg.split('/')
+                    if 'frappe-bench' in parts:
+                        idx = parts.index('frappe-bench')
+                        arg = '/'.join(parts[idx+1:])
+                args.append(arg)
+            return exe_name + " " + " ".join(args)
+        else:
+            args = []
+            for arg in cmd[1:]:
+                if '/' in arg:
+                    parts = arg.split('/')
+                    if 'frappe-bench' in parts:
+                        idx = parts.index('frappe-bench')
+                        arg = '/'.join(parts[idx+1:])
+                args.append(arg)
+            return exe_name + (" " + " ".join(args) if args else "")
+    except Exception:
+        return p.info.get('name') or "unknown"
+
+
 def _get_top_processes_data():
     out = []
     try:
         import psutil
-        for p in psutil.process_iter(['pid', 'name', 'username', 'memory_info', 'io_counters', 'cpu_percent']):
+        for p in psutil.process_iter(['pid', 'name', 'username', 'memory_info', 'io_counters', 'cpu_percent', 'cmdline']):
             try:
                 mem_info = p.info.get('memory_info')
                 rss = mem_info.rss if mem_info else 0
@@ -532,7 +566,7 @@ def _get_top_processes_data():
                 
                 out.append({
                     "pid": p.info['pid'],
-                    "name": p.info['name'] or "unknown",
+                    "name": _get_process_name(p),
                     "user": p.info['username'] or "system",
                     "cpu": round(cpu, 1),
                     "mem": rss,

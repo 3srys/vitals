@@ -103,13 +103,13 @@ before_install = "frappe_system_monitor.install.before_install"
 # Scheduled Tasks
 # ---------------
 
-scheduler_events = {
-	"cron": {
-		"* * * * *": [
-			"frappe_system_monitor.frappe_system_monitor.system_monitor.check_and_start_ws_server"
-		]
-	}
-}
+# scheduler_events = {
+# 	"cron": {
+# 		"* * * * *": [
+# 			"frappe_system_monitor.frappe_system_monitor.system_monitor.check_and_start_ws_server"
+# 		]
+# 	}
+# }
 
 # Testing
 # -------
